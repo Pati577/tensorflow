@@ -16,6 +16,10 @@ enum MemBwType {
   MEM_BW_TYPE_SRAM_RD = 1;
   // On-chip memory write bw.
   MEM_BW_TYPE_SRAM_WR = 2;
+  MEM_BW_TYPE_CMEM_RD = 3;
+  MEM_BW_TYPE_CMEM_WR = 4;
+  MEM_BW_TYPE_VMEM_RD = 5;
+  MEM_BW_TYPE_VMEM_WR = 6;
 
   // Leave last.
   MEM_BW_TYPE_MAX = 2;
