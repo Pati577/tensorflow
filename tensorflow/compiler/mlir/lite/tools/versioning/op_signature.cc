@@ -60,7 +60,7 @@ std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
     return tensor_specs;
   }
 
-  for (int32_t i = 0; i < tensors->size(); ++i) {
+  for (size_t i = 0; i < tensors->size(); ++i) {
     int32_t tensor_no = tensors->Get(i);
 
     OpSignatureTensorSpec tensor_spec = {kTfLiteNoType};
@@ -78,7 +78,7 @@ std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
         }
         const flatbuffers::Vector<int32_t>* shape_vec = fb_tensor->shape();
         if (shape_vec) {
-          for (int32_t j = 0; j < shape_vec->size(); ++j) {
+          for (size_t j = 0; j < shape_vec->size(); ++j) {
             tensor_spec.dims.push_back(shape_vec->Get(j));
           }
         }
@@ -86,7 +86,7 @@ std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
             fb_tensor->shape_signature();
         tensor_spec.is_shape_dynamic = false;
         if (shape_signature_vec) {
-          for (int32_t j = 0; j < shape_signature_vec->size(); ++j) {
+          for (size_t j = 0; j < shape_signature_vec->size(); ++j) {
             if (shape_signature_vec->Get(j) == -1) {
               tensor_spec.is_shape_dynamic = true;
               break;
@@ -98,6 +98,11 @@ std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
     tensor_specs.push_back(tensor_spec);
   }
   return tensor_specs;
+}
+
+bool IsTensorSizeValidAndEqual(size_t tensor_a_size, int tensor_b_size) {
+  return tensor_b_size > 1 &&
+         static_cast<size_t>(tensor_b_size) == tensor_a_size;
 }
 
 }  // namespace
@@ -123,9 +128,8 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
       const QuantizationParameters* filter_quant =
           filter_tensor->quantization();
       int num_channels = filter_tensor->shape()->Get(3);
-      if (filter_quant && filter_quant->scale() &&
-          filter_quant->scale()->size() &&
-          filter_quant->scale()->size() == num_channels) {
+      if (filter_quant && num_channels > 0 && filter_quant->scale() &&
+          filter_quant->scale()->size() == static_cast<size_t>(num_channels)) {
         op_sig.ext_options.depthwise_conv_2d.is_per_channel_quantized = true;
       }
     } break;
@@ -141,8 +145,8 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
           weight_quant->scale()->size() && weight_tensor->shape() &&
           weight_tensor->shape()->size()) {
         op_sig.ext_options.fully_connected.is_per_channel_quantized =
-            weight_quant->scale()->size() > 1 &&
-            weight_quant->scale()->size() == weight_tensor->shape()->Get(0);
+            IsTensorSizeValidAndEqual(weight_quant->scale()->size(),
+                                      weight_tensor->shape()->Get(0));
       }
     } break;
 
@@ -183,9 +187,8 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
       const QuantizationParameters* filter_quant =
           filter_tensor->quantization();
       int num_filters = filter_tensor->shape()->Get(0);
-      if (filter_quant && filter_quant->scale() &&
-          filter_quant->scale()->size() &&
-          filter_quant->scale()->size() == num_filters) {
+      if (filter_quant && num_filters > 0 && filter_quant->scale() &&
+          filter_quant->scale()->size() == static_cast<size_t>(num_filters)) {
         op_sig.ext_options.conv_2d.is_per_channel_quantized = true;
       }
       if (input_tensor->shape() && input_tensor->shape()->size()) {
@@ -213,9 +216,9 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
           subgraph->tensors()->Get(op->inputs()->Get(0));
       const QuantizationParameters* input_quant = input_tensor->quantization();
       if (input_quant && input_quant->scale() &&
-          input_quant->scale()->size() > 1 &&
-          input_quant->scale()->size() ==
-              input_tensor->shape()->Get(input_quant->quantized_dimension())) {
+          IsTensorSizeValidAndEqual(
+              input_quant->scale()->size(),
+              input_tensor->shape()->Get(input_quant->quantized_dimension()))) {
         op_sig.ext_options.dequantize.is_per_channel_quantized = true;
       }
     } break;
@@ -226,10 +229,9 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
       const QuantizationParameters* output_quant =
           output_tensor->quantization();
       if (output_quant && output_quant->scale() &&
-          output_quant->scale()->size() > 1 &&
-          output_quant->scale()->size() ==
-              output_tensor->shape()->Get(
-                  output_quant->quantized_dimension())) {
+          IsTensorSizeValidAndEqual(output_quant->scale()->size(),
+                                    output_tensor->shape()->Get(
+                                        output_quant->quantized_dimension()))) {
         op_sig.ext_options.quantize.is_per_channel_quantized = true;
       }
     } break;
@@ -247,8 +249,8 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
       if (table_quant && table_quant->scale() && table_quant->scale()->size() &&
           table_tensor->shape() && table_tensor->shape()->size()) {
         op_sig.ext_options.embedding_lookup.is_per_channel_quantized =
-            table_quant->scale()->size() > 1 &&
-            table_quant->scale()->size() == table_tensor->shape()->Get(0);
+            IsTensorSizeValidAndEqual(table_quant->scale()->size(),
+                                      table_tensor->shape()->Get(0));
       }
     } break;
 
