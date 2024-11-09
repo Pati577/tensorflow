@@ -331,7 +331,7 @@ typedef enum TfLiteQuantizationType {
 /// Structure specifying the quantization used by the tensor, if-any.
 typedef struct TfLiteQuantization {
   /// The type of quantization held by params.
-  TfLiteQuantizationType type;
+  TfLiteQuantizationType type = kTfLiteNoQuantization;
   /// Holds an optional reference to a quantization param structure. The actual
   /// type depends on the value of the `type` field (see the comment there for
   /// the values and corresponding types).
